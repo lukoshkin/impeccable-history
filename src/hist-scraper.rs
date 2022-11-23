@@ -134,7 +134,6 @@ fn main () -> std::io::Result<()> {
 
         let mut add_flag = true;
         for pat in query.iter() {
-            println!("{} vs {}", line, pat);
             if line.trim().eq(pat) {
                 add_flag = false;
                 break;
