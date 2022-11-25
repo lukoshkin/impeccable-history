@@ -24,7 +24,10 @@ The plugin works by remembering failed commands in a
 operation at `/tmp/hist-scraper-error.log`.
 
 _**Note:** you can not remove with_ `impeccable-history` _commands in_
-`$HISTFILE` _that failed before the installation._
+`$HISTFILE` _that failed before the installation. Also, editing_ `HISTFILE`
+_manually will result in assigning a wrong value to_ `HIST_SCRAPER_SKIP_ROWS`
+_for the next shell session. However, you can adjust it or set it to zero from
+the command line._
 
 
 ## Installation

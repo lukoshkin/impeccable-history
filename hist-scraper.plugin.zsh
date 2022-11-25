@@ -7,7 +7,9 @@ WORKDIR=${0:h}
 ## - the other contains records of the form 'exit_code failed_cmd'.
 ## The latter is used as input to an executable written in Rust.
 HIST_SCRAPER_LOG=/tmp/hist-scraper-nzcmds.txt
-skipn=$(head -n 1 $HIST_SCRAPER_LOG 2> /dev/null || echo 0)  # tmp var
+skipn=$(head -n 1 $HIST_SCRAPER_LOG 2> /dev/null)  # tmp var
+[[ $skipn =~ ^[0-9]+$ ]] || skipn=0
+
 HIST_SCRAPER_SKIP_ROWS=$(( skipn > 0 ? skipn : 0 ))
 unset skipn
 
@@ -37,8 +39,7 @@ _scrape_history () {
     -n ${HIST_SCRAPER_SKIP_ROWS:-0} --in-place \
     2> /tmp/hist-scraper-error.log
 
-  HIST_SCRAPER_SKIP_ROWS=$(cat "$HISTFILE" | wc -l)
-  echo $HIST_SCRAPER_SKIP_ROWS > $HIST_SCRAPER_LOG
+  cat "$HISTFILE" | wc -l > $HIST_SCRAPER_LOG
 }
 
 
