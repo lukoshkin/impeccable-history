@@ -104,6 +104,7 @@ fn main () -> std::io::Result<()> {
     let target = String::from_utf8_lossy(&target);
     let target: Vec<&str> = target.split("\n")
         .map(|l| l.trim()).collect();
+    // Just in case. Trimming is on Zsh side ('histreduceblanks' option).
 
     let mut buf = Vec::<String>::with_capacity(target.capacity());
 
@@ -127,6 +128,7 @@ fn main () -> std::io::Result<()> {
     //     .map(|l| l.unwrap()).collect();
 
     for (i, line) in target.iter().enumerate() {
+        // Clumsy 'if' - will be removed in the future.
         if i < args.skip_n {
             buf.push(line.to_string());
             continue;
@@ -134,7 +136,7 @@ fn main () -> std::io::Result<()> {
 
         let mut add_flag = true;
         for pat in query.iter() {
-            if line.trim().eq(pat) {
+            if line.eq(pat) {
                 add_flag = false;
                 break;
             }
