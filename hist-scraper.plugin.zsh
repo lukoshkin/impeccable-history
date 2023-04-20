@@ -34,15 +34,14 @@ _zsh_add_history () {
 ## - the other contains records of the form 'exit_code failed_cmd'.
 ## The latter is used as input to an executable written in Rust.
 HIST_SCRAPER_LOG=/tmp/hist-scraper-nzcmds.txt
-skipn=$(head -n 1 $HIST_SCRAPER_LOG 2> /dev/null)  # tmp var
-[[ $skipn =~ ^[0-9]+$ ]] || skipn=0
+HIST_SCRAPER_SKIP_ROWS=$(cat "$HIST_SCRAPER_DIR/skip_num" 2> /dev/null)
+HIST_SCRAPER_SKIP_ROWS=${HIST_SCRAPER_SKIP_ROWS:-0}
+touch "$HIST_SCRAPER_LOG"
 
-HIST_SCRAPER_SKIP_ROWS=$(( skipn > 0 ? skipn : 0 ))
-unset skipn
-
-## One can modify to add code-cmd pairs to an array instead of dumping to
-## a file. In the former case, hist-scraper should be re-implemented for
-## extraction of the array content (possibly, with the use of `std::env`).
+## One can modify the functionality to add code-cmd pairs to an array
+## instead of dumping them to a file. In the former case, hist-scraper
+## should be re-implemented for extraction of the array content
+## (possibly, with the use of `std::env`).
 _add_broken_cmd () {
   local code=$?
 
@@ -63,17 +62,14 @@ _add_broken_cmd () {
 ## At the time this hook is called,
 ## all session commands are already in the $HISTFILE.
 _scrape_history () {
-  ## TODO: Allow to specify where a user keeps their history:
-  #  local target=${HIST_SCRAPER_TARGET:-$HISTFILE}
-  ## Use target instead of HISTFILE.
   "$HIST_SCRAPER_DIR/bin/hist-scraper" \
     -t "$HISTFILE" -q $HIST_SCRAPER_LOG -c ' ' \
-    -n $HIST_SCRAPER_SKIP_ROWS --in-place \
+    -n $HIST_SCRAPER_SKIP_ROWS ---no-header -in-place \
     2> /tmp/hist-scraper-error.log
     ## Unfortunately, it unmetafies $HISTFILE
     ## (will be fixed in the future).
 
-  wc -l < "$HISTFILE" > $HIST_SCRAPER_LOG
+  wc -l < "$HISTFILE" > "$HIST_SCRAPER_DIR/skip_num"
 }
 
 
