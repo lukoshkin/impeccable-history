@@ -36,7 +36,7 @@ _zsh_add_history () {
 HIST_SCRAPER_LOG=/tmp/hist-scraper-nzcmds.txt
 HIST_SCRAPER_SKIP_ROWS=$(cat "$HIST_SCRAPER_DIR/skip_num" 2> /dev/null)
 HIST_SCRAPER_SKIP_ROWS=${HIST_SCRAPER_SKIP_ROWS:-0}
-touch "$HIST_SCRAPER_LOG"
+# touch "$HIST_SCRAPER_LOG" -- this won't be executed
 
 ## One can modify the functionality to add code-cmd pairs to an array
 ## instead of dumping them to a file. In the former case, hist-scraper
@@ -45,31 +45,51 @@ touch "$HIST_SCRAPER_LOG"
 _add_broken_cmd () {
   local code=$?
 
-  if [[ $code != 0 ]]; then
+  ## Skip exit codes from signals (128 + signal_number):
+  ## 130 = SIGINT (Ctrl+C), 137 = SIGKILL, 143 = SIGTERM, etc.
+  ## Also skip code 126 (command not executable) and 127 (command not found)
+  ## as these are typically user typos, not failed commands to remove.
+  if [[ $code != 0 && $code -lt 126 ]]; then
     # local line="$code $(fc -ln -1 | tr -s ' ')"
     ## Unnecessary to squeeze, as this is handled by the options.
     local line="$code $(fc -ln -1)"
 
     ## Don't make duplicates.
-    if ! grep -q "$line" $HIST_SCRAPER_LOG; then
-      echo $line >> $HIST_SCRAPER_LOG
+    if ! command grep -qF -- "$line" "$HIST_SCRAPER_LOG" 2>/dev/null; then
+      echo "$line" >> "$HIST_SCRAPER_LOG"
     fi
   fi
 
-  return $?
+  return $code
 }
 
 ## At the time this hook is called,
 ## all session commands are already in the $HISTFILE.
 _scrape_history () {
-  "$HIST_SCRAPER_DIR/bin/hist-scraper" \
-    -t "$HISTFILE" -q $HIST_SCRAPER_LOG -c ' ' \
-    -n $HIST_SCRAPER_SKIP_ROWS ---no-header -in-place \
-    2> /tmp/hist-scraper-error.log
-    ## Unfortunately, it unmetafies $HISTFILE
-    ## (will be fixed in the future).
+  ## Only run if there are failed commands to remove.
+  if [[ ! -s "$HIST_SCRAPER_LOG" ]]; then
+    ## Still update skip_num for the next session.
+    [[ -f "$HISTFILE" ]] && wc -l < "$HISTFILE" > "$HIST_SCRAPER_DIR/skip_num"
+    return 0
+  fi
 
-  wc -l < "$HISTFILE" > "$HIST_SCRAPER_DIR/skip_num"
+  ## Backup HISTFILE before modification to prevent data loss.
+  local backup="/tmp/hist-scraper-backup-$$.txt"
+  cp "$HISTFILE" "$backup" 2>/dev/null || return 1
+
+  if "$HIST_SCRAPER_DIR/bin/hist-scraper" \
+    -t "$HISTFILE" -q "$HIST_SCRAPER_LOG" -c ' ' \
+    -n "$HIST_SCRAPER_SKIP_ROWS" --no-header --in-place \
+    2> /tmp/hist-scraper-error.log; then
+    ## Success: update skip_num and clean up.
+    wc -l < "$HISTFILE" > "$HIST_SCRAPER_DIR/skip_num"
+    rm -f "$backup" "$HIST_SCRAPER_LOG"
+  else
+    ## Failure: restore from backup.
+    cp "$backup" "$HISTFILE" 2>/dev/null
+    rm -f "$backup"
+  fi
+  ## Unfortunately, it unmetafies $HISTFILE (will be fixed in the future).
 }
 
 
