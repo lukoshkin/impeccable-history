@@ -78,7 +78,7 @@ _scrape_history () {
   cp "$HISTFILE" "$backup" 2>/dev/null || return 1
 
   if "$HIST_SCRAPER_DIR/bin/hist-scraper" \
-    -t "$HISTFILE" -q "$HIST_SCRAPER_LOG" -c ' ' \
+    -t "$HISTFILE" -q "$HIST_SCRAPER_LOG" \
     -n "$HIST_SCRAPER_SKIP_ROWS" --no-header --in-place \
     2> /tmp/hist-scraper-error.log; then
     ## Success: update skip_num and clean up.
