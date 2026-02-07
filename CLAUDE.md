@@ -44,7 +44,13 @@ cp target/release/hist-scraper bin/
 ### Environment Variables
 
 - `HIST_SCRAPER_IGNORE` - Regex pattern for commands to exclude from history immediately (default: `^.{1,3}$`)
+- `HIST_SCRAPER_KEEP` - Regex pattern for commands to keep in history even if they fail (e.g., `^(pytest|make|cargo test)`)
 - `HISTORY_IGNORE` - ZSH variable for patterns to remove on logout (separate from plugin)
+
+### Per-Command Preservation
+
+- `cmd # keep` - Marker at EOL preserves the command (marker is stripped from history)
+- `cmd || true` - Force success exit code (the `|| true` stays in history)
 
 ### Temporary Files
 

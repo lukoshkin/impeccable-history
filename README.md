@@ -32,12 +32,13 @@ the command line._
 ## More About
 
 On top of removing failed commands, `impeccable-history` plugin sets
-four Zsh options: `histignorespace`, `histreduceblanks`, `histignorealldups`,
-`histnostore` - for a sharper management of a user history.
+these Zsh options: `histignorespace`, `histreduceblanks`, `histignorealldups`,
+`histnostore`, and `interactivecomments` (needed for `# keep` marker) - for a
+sharper management of a user history.
 
 Even more granular control over the lifetime of trivial commands is possible
-with `HIST_SCRAPER_IGNORE` and `HISTORY_IGNORE` variables. One can incorporate
-the adaptations of the following into their `.zshrc`.
+with `HIST_SCRAPER_IGNORE`, `HIST_SCRAPER_KEEP`, and `HISTORY_IGNORE` variables.
+One can incorporate the adaptations of the following into their `.zshrc`.
 
 ```zsh
 ignore_list=('.{1,3}' echo clear tmux )
@@ -45,9 +46,37 @@ ignore_list=('.{1,3}' echo clear tmux )
 HIST_SCRAPER_IGNORE="(^$(join_by '$|^' ${ignore_list[@]})$)"
 unset ignore_list
 
+## Keep these commands in history even if they fail (e.g., test runners).
+HIST_SCRAPER_KEEP="^(pytest|make|cargo test|npm test|go test)"
+
 ## Remove these patterns from $HISTFILE on shell logout.
 HISTORY_IGNORE="(mv *|mkdir *|man *|math *|type *|which *|whence *)"
 ```
+
+The `HIST_SCRAPER_KEEP` variable is a regex pattern matching commands that
+should never be removed from history, regardless of their exit code. This is
+useful for test runners and build tools that frequently return non-zero exit
+codes as part of normal workflow.
+
+### Per-Command History Preservation
+
+For one-off commands that may fail but should stay in history, you have two
+options:
+
+**Option 1: `# keep` marker**
+```zsh
+pytest tests/test_api.py # keep
+```
+The command is preserved in history without the `# keep` suffix. The marker
+must be standalone at the end of the line (e.g., `# keep this value` won't
+trigger preservation).
+
+**Option 2: Force success exit code**
+```zsh
+pytest tests/test_api.py || true
+```
+The `|| true` makes the exit code always 0, so the command won't be marked for
+removal. The `|| true` part remains in the saved command.
 
 ## Installation
 

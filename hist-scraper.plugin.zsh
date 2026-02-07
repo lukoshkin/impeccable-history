@@ -9,10 +9,12 @@ HIST_SCRAPER_DIR=${0:h}
 ## If first char is whitespace -> do not add the cmd to the history.
 ## Remove repeating whitespace characters.
 ## Do not store duplicates and history cmds (`fc ..`).
+## Allow comments in interactive shell (needed for '# keep' marker).
 setopt histignorespace
 setopt histreduceblanks
 setopt histignorealldups
 setopt histnostore
+setopt interactivecomments
 
 ## Zsh hook on appending lines to the history file.
 ## Note: # a command is added to the history before being executed.
@@ -50,10 +52,20 @@ _add_broken_cmd () {
   ## Also skip code 126 (command not executable) and 127 (command not found)
   ## as these are typically user typos, not failed commands to remove.
   if [[ $code != 0 && $code -lt 126 ]]; then
-    # local line="$code $(fc -ln -1 | tr -s ' ')"
-    ## Unnecessary to squeeze, as this is handled by the options.
-    local line="$code $(fc -ln -1)"
+    local cmd=$(fc -ln -1)
 
+    ## Keep commands ending with '# keep' marker (must be standalone at EOL).
+    ## The marker will be stripped from history later in _scrape_history.
+    if [[ ${cmd##[[:space:]]} =~ '#[[:space:]]*keep[[:space:]]*$' ]]; then
+      return $code
+    fi
+
+    ## Keep commands matching HIST_SCRAPER_KEEP pattern (e.g., pytest, make).
+    if [[ -n "$HIST_SCRAPER_KEEP" && ${cmd##[[:space:]]} =~ $HIST_SCRAPER_KEEP ]]; then
+      return $code
+    fi
+
+    local line="$code $cmd"
     ## Don't make duplicates.
     if ! command grep -qF -- "$line" "$HIST_SCRAPER_LOG" 2>/dev/null; then
       echo "$line" >> "$HIST_SCRAPER_LOG"
@@ -68,6 +80,8 @@ _add_broken_cmd () {
 _scrape_history () {
   ## Only run if there are failed commands to remove.
   if [[ ! -s "$HIST_SCRAPER_LOG" ]]; then
+    ## Strip '# keep' markers even if no failed commands to process.
+    command sed -i 's/[[:space:]]*#[[:space:]]*keep[[:space:]]*$//' "$HISTFILE"
     ## Still update skip_num for the next session.
     [[ -f "$HISTFILE" ]] && wc -l < "$HISTFILE" > "$HIST_SCRAPER_DIR/skip_num"
     return 0
@@ -81,6 +95,8 @@ _scrape_history () {
     -t "$HISTFILE" -q "$HIST_SCRAPER_LOG" \
     -n "$HIST_SCRAPER_SKIP_ROWS" --no-header --in-place \
     2> /tmp/hist-scraper-error.log; then
+    ## Strip '# keep' markers from history (save commands without the marker).
+    command sed -i 's/[[:space:]]*#[[:space:]]*keep[[:space:]]*$//' "$HISTFILE"
     ## Success: update skip_num and clean up.
     wc -l < "$HISTFILE" > "$HIST_SCRAPER_DIR/skip_num"
     rm -f "$backup" "$HIST_SCRAPER_LOG"
