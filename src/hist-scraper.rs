@@ -117,7 +117,7 @@ fn main() -> std::io::Result<()> {
         }
     }
 
-    write!(fs::File::create(output_name)?, "{}", buf.join("\n"))?;
+    writeln!(fs::File::create(output_name)?, "{}", buf.join("\n"))?;
     Ok(())
 }
 
